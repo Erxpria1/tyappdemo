@@ -1,0 +1,8 @@
+{
+  "name": "TYRANDEVU - Tarık Yalçın Hair Design",
+  "description": "Premium hair appointment and AI consultation system with glassmorphism design.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
