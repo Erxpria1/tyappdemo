@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from './types';
 import { APP_NAME } from './constants';
 import { getUsers, seedUsersIfEmpty } from './services/dbService';
@@ -19,14 +19,15 @@ function App() {
   const [showIntro, setShowIntro] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<View>('DASHBOARD');
-  
+
   // Login Modals State
   const [showCustomerLogin, setShowCustomerLogin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  
+
   // Data State
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Load users from Firebase on mount AND ensure Admin exists
   useEffect(() => {
@@ -37,6 +38,10 @@ function App() {
         setUsers(fetchedUsers);
       } catch (e) {
         console.error("Failed to load users", e);
+        // Don't block the app if Firebase fails - show degraded experience
+        setInitError("Veritabanı bağlantısı başarısız. Bazı özellikler çalışmayabilir.");
+        // Set a timeout to clear error and allow app to continue
+        setTimeout(() => setInitError(null), 5000);
       } finally {
         setLoadingUsers(false);
       }
@@ -44,13 +49,18 @@ function App() {
     initApp();
   }, []);
 
+  // Safe intro completion handler that prevents hanging
+  const handleIntroComplete = useCallback(() => {
+    setShowIntro(false);
+  }, []);
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setShowCustomerLogin(false);
     setShowAdminLogin(false);
-    
+
     if (user.role === UserRole.ADMIN || user.role === UserRole.STAFF) {
-        setCurrentView('DASHBOARD'); 
+        setCurrentView('DASHBOARD');
     }
   };
 
@@ -291,8 +301,14 @@ function App() {
 
   return (
     <>
+      {initError && (
+        <div className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[200] bg-red-500/90 backdrop-blur-md text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-fade-in">
+          <Icon name="close" size={20} />
+          <span className="text-sm">{initError}</span>
+        </div>
+      )}
       {showIntro ? (
-        <IntroAnimation onComplete={() => setShowIntro(false)} />
+        <IntroAnimation onComplete={handleIntroComplete} />
       ) : (
         renderContent()
       )}

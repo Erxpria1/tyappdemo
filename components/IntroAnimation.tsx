@@ -1,31 +1,69 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Icon } from './Icon';
 
 interface IntroAnimationProps {
   onComplete: () => void;
 }
 
+const AUTO_COMPLETE_TIMEOUT = 5000; // 5 seconds max
+
 export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
+  const completedRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  // Safe completion handler that prevents hanging
+  const safeComplete = useCallback(() => {
+    if (!completedRef.current && isMountedRef.current) {
+      completedRef.current = true;
+      try {
+        onComplete();
+      } catch (error) {
+        console.error('IntroAnimation onComplete error:', error);
+        // Force hide animation by setting step to 3
+        setStep(3);
+        // Force remove from DOM after fade out
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            completedRef.current = true;
+          }
+        }, 1000);
+      }
+    }
+  }, [onComplete]);
 
   useEffect(() => {
-    // Sequence timing
+    // Safety: prevent double completion
+    if (completedRef.current) return;
+
+    // Sequence timing with safety
     const timers = [
-      setTimeout(() => setStep(1), 500),  // Start Brand fade in
-      setTimeout(() => setStep(2), 2000), // Start Welcome fade in
-      setTimeout(() => setStep(3), 3500), // Start fade out
-      setTimeout(() => onComplete(), 4500) // Complete
+      setTimeout(() => {
+        if (isMountedRef.current) setStep(1);
+      }, 500),  // Start Brand fade in
+      setTimeout(() => {
+        if (isMountedRef.current) setStep(2);
+      }, 2000), // Start Welcome fade in
+      setTimeout(() => {
+        if (isMountedRef.current) setStep(3);
+      }, 3500), // Start fade out
+      setTimeout(() => safeComplete(), 4500), // Complete
+      // Failsafe: force complete after timeout
+      setTimeout(() => safeComplete(), AUTO_COMPLETE_TIMEOUT)
     ];
 
-    return () => timers.forEach(clearTimeout);
-  }, [onComplete]);
+    return () => {
+      isMountedRef.current = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [safeComplete]);
 
   return (
     <div className={`fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center transition-opacity duration-1000 ${step === 3 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-      
+
       {/* Skip Button - Added for easy exit */}
-      <button 
-        onClick={onComplete}
+      <button
+        onClick={safeComplete}
         className="absolute top-6 right-6 z-50 flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm uppercase tracking-widest group"
       >
         Tanıtımı Atla
@@ -34,13 +72,13 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
 
       <div className="relative z-10 text-center px-4">
         {/* Brand Name */}
-        <h1 
+        <h1
           className={`text-4xl md:text-6xl font-serif text-gold-400 tracking-widest mb-6 transition-all duration-1000 transform
             ${step >= 1 ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-10 blur-sm'}`}
         >
           TARIK YALÇIN
         </h1>
-        
+
         <h2
           className={`text-xl md:text-3xl font-light text-white tracking-[0.3em] uppercase transition-all duration-1000 delay-300 transform
             ${step >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
@@ -49,13 +87,13 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
         </h2>
 
         {/* Separator Line */}
-        <div 
+        <div
           className={`w-32 h-[1px] bg-gradient-to-r from-transparent via-gold-500 to-transparent mx-auto my-8 transition-all duration-1000 delay-500
-          ${step >= 1 ? 'w-32 opacity-100' : 'w-0 opacity-0'}`} 
+          ${step >= 1 ? 'w-32 opacity-100' : 'w-0 opacity-0'}`}
         />
 
         {/* Welcome Message */}
-        <div 
+        <div
           className={`text-2xl font-serif italic text-gray-300 transition-all duration-1000 transform
             ${step >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
         >

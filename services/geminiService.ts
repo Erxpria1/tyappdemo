@@ -2,22 +2,71 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { HairStyleRecommendation } from "../types";
 
+// Check if Google GenAI SDK and API key are available
+const isGenAIAvailable = () => {
+  try {
+    if (typeof GoogleGenAI === 'undefined') {
+      return false;
+    }
+    // Check if API key is configured
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).GEMINI_API_KEY;
+    return !!apiKey;
+  } catch {
+    return false;
+  }
+};
+
 const createClient = () => {
-  const apiKey = process.env.API_KEY;
+  // For browser environment, use window.ENV or import.meta.env
+  // The API key should be set via Vite environment variable: VITE_GEMINI_API_KEY
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).GEMINI_API_KEY;
+
   if (!apiKey) {
-    throw new Error("API Key not found");
+    throw new Error("GEMINI_API_KEY not found. Please configure the environment variable.");
   }
   return new GoogleGenAI({ apiKey });
+};
+
+// Fallback recommendations when API is unavailable
+const getFallbackRecommendations = (): HairStyleRecommendation[] => {
+  return [
+    {
+      name: "Classic Textured Crop",
+      description: "Modern ve çok yönlü bir kesim. Bu stil, yüz hatlarını dengeleyen katmanlar ve doğal doku ile çalışır. Günlük kullanıma uygun, hafif products ile şekillendirilebilir.",
+      faceShapeMatch: "Oval/Yuvarlatılmış Kare - yan katmanlar yüzü çerçeveler",
+      maintenanceLevel: "Düşük",
+      imageUrl: "https://images.unsplash.com/photo-1503951914875-452162b7f300?w=400&auto=format&fit=crop&q=60"
+    },
+    {
+      name: "Modern Quiff",
+      description: "Özgüvenli ve şık bir görünüm. Üstte hacim, yanda fade ile modern bir siluet oluşturur. Güçlü çene hattı olan yüzler için mükemmel bir denge sağlar.",
+      faceShapeMatch: "Kare/Diamond - yukarıdaki hacim yüzü uzatır",
+      maintenanceLevel: "Orta",
+      imageUrl: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=400&auto=format&fit=crop&q=60"
+    },
+    {
+      name: "Textured Fringe",
+      description: "Genç ve dinamik bir stil. Öndeki peruk kaşları hafifçe örtüp yumuşak bir geçiş sağlar. Yumuşak özellikleri olan yüzler için idealdir.",
+      faceShapeMatch: "Kalp/Oval - ön perük yüzü dengeler",
+      maintenanceLevel: "Düşük-Orta",
+      imageUrl: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=400&auto=format&fit=crop&q=60"
+    }
+  ];
 };
 
 export const analyzeStyle = async (
   description: string,
   imageData?: string
 ): Promise<HairStyleRecommendation[]> => {
+  // Check if GenAI SDK and API key are available
+  if (!isGenAIAvailable()) {
+    console.warn("Google GenAI SDK not available or API key missing, using fallback recommendations");
+    return getFallbackRecommendations();
+  }
   try {
     const ai = createClient();
     // Use flash-image for analysis. If text-only, it still works well for this context.
-    const modelId = "gemini-2.5-flash-image"; 
+    const modelId = "gemini-2.5-flash-image";
 
     const promptText = `
       You are a world-class hair stylist and image consultant at the elite "TYRANDEVU" salon.
@@ -27,7 +76,7 @@ export const analyzeStyle = async (
       1. **Face Shape Analysis:** rigorous analysis of the user's face shape (e.g., Oval, Square, Round, Diamond, Heart).
       2. **Texture Analysis:** Analyze the hair texture (Straight, Wavy, Curly, Coily) and density (Fine, Thick).
       3. **Recommendation:** Suggest 3 distinct, modern hairstyles that aesthetically balance their specific features.
-      
+
       OUTPUT REQUIREMENTS:
       - **description**: Must be detailed and personalized. Explain *WHY* this style works for *their* specific face shape and texture. (e.g., "This textured crop adds volume on top to elongate your round face structure," or "The fade is kept lower to balance your strong jawline.").
       - **faceShapeMatch**: Explicitly state their face shape and why this matches.
@@ -74,7 +123,7 @@ export const analyzeStyle = async (
 
     if (response.text) {
       let jsonString = response.text.trim();
-      
+
       // Robust Cleaning: Remove Markdown code blocks if the model includes them despite schema
       if (jsonString.startsWith('```')) {
         jsonString = jsonString.replace(/^```json\n?|```$/g, "").trim();
@@ -84,7 +133,7 @@ export const analyzeStyle = async (
 
       try {
         const recommendations = JSON.parse(jsonString) as HairStyleRecommendation[];
-        
+
         // Assign temporary placeholder images initially
         return recommendations.map((rec) => ({
           ...rec,
@@ -95,12 +144,14 @@ export const analyzeStyle = async (
         throw new Error("AI yanıtı okunamadı. Lütfen tekrar deneyin.");
       }
     }
-    
+
     return [];
 
   } catch (error) {
     console.error("Gemini Analysis Failed:", error);
-    throw error;
+    // Return fallback on any error instead of throwing
+    console.warn("Using fallback recommendations due to error");
+    return getFallbackRecommendations();
   }
 };
 
@@ -109,9 +160,15 @@ export const generateHairstylePreview = async (
   styleName: string,
   styleDescription: string
 ): Promise<string | null> => {
+  // Check if SDK and API key are available
+  if (!isGenAIAvailable()) {
+    console.warn("Cannot generate preview: GenAI SDK or API key not available");
+    return null;
+  }
+
   try {
     const ai = createClient();
-    const modelId = "gemini-2.5-flash-image"; 
+    const modelId = "gemini-2.5-flash-image";
 
     // Robust Base64 extraction
     const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
@@ -130,7 +187,7 @@ export const generateHairstylePreview = async (
             text: `Generate a high-resolution, photorealistic makeover of the person in the image.
                    Target Hairstyle: "${styleName}"
                    Style Details: ${styleDescription}
-                   
+
                    CRITICAL REQUIREMENTS FOR PHOTOREALISM:
                    1. PRESERVE IDENTITY: Keep the face, facial features, skin texture, and lighting EXACTLY as they are in the original image.
                    2. REALISTIC HAIR: The generated hair must look indistinguishable from real hair, with individual strands, natural shine, and weight.
@@ -153,7 +210,7 @@ export const generateHairstylePreview = async (
         }
       }
     }
-    
+
     return null;
 
   } catch (error) {
