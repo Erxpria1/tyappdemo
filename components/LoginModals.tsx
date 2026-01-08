@@ -6,7 +6,6 @@ import { User } from '../types';
 import { loginUser, registerCustomer } from '../services/dbService';
 
 interface LoginModalProps {
-  users?: User[]; 
   onLogin: (user: User) => void;
   onClose: () => void;
   // Navigation props

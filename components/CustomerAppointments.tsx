@@ -3,14 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { GlassCard } from './GlassCard';
 import { Icon } from './Icon';
 import { Appointment, User } from '../types';
-import { 
-  subscribeToAppointments, 
-  requestAppointmentChange, 
-  withdrawAppointmentChangeRequest, 
+import {
+  subscribeToAppointments,
+  requestAppointmentChange,
+  withdrawAppointmentChangeRequest,
   cancelAppointment,
   acceptAdminProposal,
   rejectAdminProposal
 } from '../services/dbService';
+import { getTodayString } from '../utils/dateUtils';
+import { StatusBadge } from './StatusBadge';
 
 interface CustomerAppointmentsProps {
   currentUser: User;
@@ -168,13 +170,7 @@ export const CustomerAppointments: React.FC<CustomerAppointmentsProps> = ({ curr
                  {/* Status Badges */}
                  <div className="flex gap-2 mt-2">
                     {appt.status !== 'cancelled' && (
-                        <span className={`text-xs px-2 py-1 rounded-full border ${
-                            appt.status === 'confirmed' ? 'border-green-500/50 bg-green-500/10 text-green-400' :
-                            appt.status === 'pending' ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400' :
-                            'border-gray-500 bg-gray-500/10 text-gray-400'
-                        }`}>
-                            {appt.status === 'confirmed' ? 'Onaylandı' : 'Beklemede'}
-                        </span>
+                      <StatusBadge status={appt.status} />
                     )}
 
                     {appt.changeRequest && appt.changeRequest.status === 'pending' && (
@@ -201,7 +197,7 @@ export const CustomerAppointments: React.FC<CustomerAppointmentsProps> = ({ curr
                             <input 
                                 type="date" 
                                 value={newDate}
-                                min={new Date().toISOString().split('T')[0]}
+                                min={getTodayString()}
                                 onChange={e => setNewDate(e.target.value)}
                                 className="w-full glass-input p-2 rounded text-sm"
                             />

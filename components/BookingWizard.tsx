@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 import { SERVICES } from '../constants';
 import { ServiceItem, User, UserRole, Appointment } from '../types';
 import { getUsers, subscribeToAppointments, createAppointment } from '../services/dbService';
+import { getTodayString } from '../utils/dateUtils';
 
 interface BookingWizardProps {
   currentUser: User;
@@ -18,7 +19,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
   const [step, setStep] = useState<Step>('SERVICE');
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   // Real-time data
@@ -171,7 +172,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
           <input 
             type="date" 
             value={selectedDate}
-            min={new Date().toISOString().split('T')[0]}
+            min={getTodayString()}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="w-full glass-input p-4 rounded-xl text-lg md:text-base appearance-none"
           />

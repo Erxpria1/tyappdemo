@@ -4,6 +4,12 @@ import { analyzeStyle, generateHairstylePreview } from '../services/geminiServic
 import { HairStyleRecommendation } from '../types';
 import { GlassCard } from './GlassCard';
 import { Icon } from './Icon';
+import {
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_MB,
+  UPLOAD_PROGRESS_INTERVAL_MS,
+  IMAGE_GENERATION_DELAY_MS
+} from '../constants';
 
 interface AIHairConsultantProps {
   onClose?: () => void;
@@ -34,9 +40,9 @@ export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ onClose }) =
         return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        setError(`Dosya boyutu çok büyük (${sizeMB}MB). Lütfen 5MB altı bir dosya yükleyin.`);
+        setError(`Dosya boyutu çok büyük (${sizeMB}MB). Lütfen ${MAX_FILE_SIZE_MB}MB altı bir dosya yükleyin.`);
         return;
     }
 
@@ -50,7 +56,7 @@ export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ onClose }) =
             }
             return prev + 5;
         });
-    }, 50);
+    }, UPLOAD_PROGRESS_INTERVAL_MS);
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -119,7 +125,7 @@ export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ onClose }) =
         results.forEach(async (rec, index) => {
            try {
              // Delay slightly to avoid hitting rate limits instantly if multiple requests fire
-             await new Promise(r => setTimeout(r, index * 500)); 
+             await new Promise(r => setTimeout(r, index * IMAGE_GENERATION_DELAY_MS)); 
 
              const generatedImage = await generateHairstylePreview(selectedImage, rec.name, rec.description);
              
@@ -250,7 +256,7 @@ export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ onClose }) =
                   <span className={`text-sm font-medium transition-colors ${isDragging ? 'text-gold-400' : 'text-gray-400 group-hover:text-white'}`}>
                     {isDragging ? 'Fotoğrafı Buraya Bırakın' : 'Fotoğrafı sürükleyin veya tıklayın'}
                   </span>
-                  <span className="text-xs text-gray-500 mt-2">JPG, PNG (Max 5MB)</span>
+                  <span className="text-xs text-gray-500 mt-2">JPG, PNG (Max {MAX_FILE_SIZE_MB}MB)</span>
                 </div>
               )}
               

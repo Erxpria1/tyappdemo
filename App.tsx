@@ -130,7 +130,8 @@ function App() {
                        </button>
                      </>
                    ) : (
-                     <button 
+                     <button
+                      data-testid="login-button"
                       onClick={() => setShowCustomerLogin(true)}
                       className="px-6 py-2 bg-gold-500/10 hover:bg-gold-500 text-gold-400 hover:text-black border border-gold-500 rounded-lg transition-all text-sm font-bold tracking-wide"
                      >

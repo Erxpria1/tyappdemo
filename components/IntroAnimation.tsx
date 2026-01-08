@@ -7,6 +7,13 @@ interface IntroAnimationProps {
 
 const AUTO_COMPLETE_TIMEOUT = 5000; // 5 seconds max
 
+// Check if we're in a test environment (can be overridden via window)
+const isTestEnvironment = () => {
+  return (window as any).__PLAYWRIGHT__ === true ||
+         (window as any).Cypress !== undefined ||
+         navigator.webdriver === true;
+};
+
 export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const completedRef = useRef(false);
@@ -33,6 +40,13 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
   }, [onComplete]);
 
   useEffect(() => {
+    // Skip intro in test environment for faster tests
+    if (isTestEnvironment()) {
+      console.log('Test environment detected, skipping intro animation');
+      safeComplete();
+      return;
+    }
+
     // Safety: prevent double completion
     if (completedRef.current) return;
 

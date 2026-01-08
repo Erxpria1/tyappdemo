@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 import { User, Appointment, ServiceItem, UserRole } from '../types';
 import { createAppointment, updateAppointmentDetails, proposeAdminChange, deleteAppointment, ensureCustomerExists } from '../services/dbService';
 import { SERVICES } from '../constants';
+import { getTodayString } from '../utils/dateUtils';
 
 interface AdminAppointmentModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const AdminAppointmentModal: React.FC<AdminAppointmentModalProps> = ({
         setCustomerPhone('');
         setServiceId(SERVICES[0].id);
         setStaffId(staffMembers[0]?.id || '');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(getTodayString());
         setTime('12:00');
         setNotes('');
       }
@@ -59,23 +60,29 @@ export const AdminAppointmentModal: React.FC<AdminAppointmentModalProps> = ({
       alert("Lütfen gerekli alanları doldurun.");
       return;
     }
-    
+
     // For new appointments, phone is mandatory to link/create user
     if (!existingAppointment && !customerPhone) {
         alert("Lütfen müşteri telefon numarasını giriniz.");
         return;
     }
-    
+
+    // Validate staffId exists in staffMembers
+    const selectedStaff = staffMembers.find(s => s.id === staffId);
+    if (!selectedStaff) {
+      alert("Geçersiz personel seçimi. Lütfen geçerli bir personel seçin.");
+      return;
+    }
+
     setLoading(true);
     const selectedService = SERVICES.find(s => s.id === serviceId) || SERVICES[0];
-    const selectedStaff = staffMembers.find(s => s.id === staffId);
 
     try {
       if (existingAppointment) {
         // UPDATE (No need to check user exists, we assume user ID is already linked)
         await updateAppointmentDetails(existingAppointment.id, {
           staffId,
-          staffName: selectedStaff?.name || 'Unknown',
+          staffName: selectedStaff.name,
           date,
           time,
           serviceId,
@@ -90,10 +97,10 @@ export const AdminAppointmentModal: React.FC<AdminAppointmentModalProps> = ({
 
         // 2. Create Appointment linked to that user
         await createAppointment({
-          customerId: user.id, 
+          customerId: user.id,
           customerName: user.name, // Use the name from DB to be consistent
           staffId,
-          staffName: selectedStaff?.name || 'Unknown',
+          staffName: selectedStaff.name,
           date,
           time,
           serviceId,

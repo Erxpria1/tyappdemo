@@ -2,14 +2,32 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { HairStyleRecommendation } from "../types";
 
+// Type definitions for Gemini API
+interface GeminiTextPart {
+  text: string;
+}
+
+interface GeminiInlineDataPart {
+  inlineData: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+type GeminiPart = GeminiTextPart | GeminiInlineDataPart;
+
+interface WindowWithEnv extends Window {
+  GEMINI_API_KEY?: string;
+}
+
 // Check if Google GenAI SDK and API key are available
-const isGenAIAvailable = () => {
+const isGenAIAvailable = (): boolean => {
   try {
     if (typeof GoogleGenAI === 'undefined') {
       return false;
     }
     // Check if API key is configured
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).GEMINI_API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as unknown as WindowWithEnv).GEMINI_API_KEY;
     return !!apiKey;
   } catch {
     return false;
@@ -19,7 +37,7 @@ const isGenAIAvailable = () => {
 const createClient = () => {
   // For browser environment, use window.ENV or import.meta.env
   // The API key should be set via Vite environment variable: VITE_GEMINI_API_KEY
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).GEMINI_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as unknown as WindowWithEnv).GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY not found. Please configure the environment variable.");
@@ -85,7 +103,7 @@ export const analyzeStyle = async (
       Return STRICT JSON format (Array of objects). Do not use Markdown code blocks.
     `;
 
-    const parts: any[] = [{ text: promptText }];
+    const parts: GeminiPart[] = [{ text: promptText }];
 
     if (imageData) {
       // Remove header if present (data:image/jpeg;base64,...)

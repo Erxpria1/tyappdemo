@@ -3,16 +3,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { GlassCard } from './GlassCard';
 import { Icon } from './Icon';
 import { User, UserRole, Appointment } from '../types';
-import { 
-  getUsers, 
-  createStaffMember, 
-  subscribeToAppointments, 
-  approveAppointmentChange, 
+import { getTodayString } from '../utils/dateUtils';
+import {
+  getUsers,
+  createStaffMember,
+  subscribeToAppointments,
+  approveAppointmentChange,
   rejectAppointmentChange,
   updateAppointmentStatus,
   deleteAppointment
 } from '../services/dbService';
 import { AdminAppointmentModal } from './AdminAppointmentModal';
+import { StatusBadge } from './StatusBadge';
 
 export const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -103,7 +105,7 @@ export const AdminPanel: React.FC = () => {
   // --- FILTER & SORT LOGIC (Optimized) ---
   const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
 
     // 1. Text Search
     if (searchTerm) {
@@ -162,7 +164,7 @@ export const AdminPanel: React.FC = () => {
 
   const staffMembers = users.filter(u => u.role === UserRole.STAFF || u.role === UserRole.ADMIN);
   const pendingChangeRequests = appointments.filter(a => a.changeRequest && a.changeRequest.status === 'pending');
-  const todayAppointments = appointments.filter(a => a.date === new Date().toISOString().split('T')[0] && a.status !== 'cancelled');
+  const todayAppointments = appointments.filter(a => a.date === getTodayString() && a.status !== 'cancelled');
 
   const stats = [
     { title: 'Toplam Randevu', value: appointments.length.toString(), icon: 'calendar', change: 'Genel' },
@@ -395,7 +397,7 @@ export const AdminPanel: React.FC = () => {
               ) : (
                 sortedDateKeys.map(dateKey => {
                    const dateObj = new Date(dateKey);
-                   const isToday = dateKey === new Date().toISOString().split('T')[0];
+                   const isToday = dateKey === getTodayString();
                    const dateLabel = dateObj.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
                    return (
@@ -438,18 +440,7 @@ export const AdminPanel: React.FC = () => {
                                      </div>
 
                                      <div className="flex items-center gap-3 justify-end">
-                                        <div className={`text-xs px-2 py-1 rounded font-bold uppercase tracking-wide
-                                           ${appt.status === 'confirmed' ? 'bg-green-500/10 text-green-400' : 
-                                             appt.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' :
-                                             appt.status === 'completed' ? 'bg-blue-500/10 text-blue-400' : 
-                                             'bg-red-500/10 text-red-400'
-                                           }
-                                        `}>
-                                           {appt.status === 'confirmed' ? 'Onaylı' : 
-                                            appt.status === 'pending' ? 'Beklemede' : 
-                                            appt.status === 'completed' ? 'Bitti' : 'İptal'}
-                                        </div>
-                                        
+                                        <StatusBadge status={appt.status} className="font-bold uppercase tracking-wide" />
                                         <Icon name="chevronRight" size={16} className="text-gray-600 group-hover:text-white transition-colors" />
                                      </div>
 
