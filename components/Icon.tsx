@@ -1,5 +1,5 @@
 import React from 'react';
-import { Scissors, User, Calendar, Shield, Sparkles, LogOut, Menu, X, ChevronRight, CheckCircle, Crown, Upload } from 'lucide-react';
+import { Scissors, User, Calendar, Shield, Sparkles, LogOut, Menu, X, ChevronRight, CheckCircle, Crown, Upload, MessageCircle } from 'lucide-react';
 
 interface IconProps {
   name: string;
@@ -20,7 +20,8 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, className = "" }) =
     chevronRight: ChevronRight,
     check: CheckCircle,
     crown: Crown,
-    upload: Upload
+    upload: Upload,
+    whatsapp: MessageCircle
   };
 
   const IconComponent = icons[name];

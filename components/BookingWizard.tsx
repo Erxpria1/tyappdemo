@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from './GlassCard';
 import { Icon } from './Icon';
@@ -8,24 +7,29 @@ import { getUsers, subscribeToAppointments, createAppointment } from '../service
 import { getTodayString } from '../utils/dateUtils';
 
 interface BookingWizardProps {
-  currentUser: User;
+  currentUser: User | null;
   onComplete: () => void;
   onCancel: () => void;
+  onLoginRequired?: () => void;
 }
 
-type Step = 'SERVICE' | 'STAFF' | 'DATETIME' | 'CONFIRM';
+type Step = 'SERVICE' | 'STAFF' | 'DATETIME' | 'GUEST_CONFIRM' | 'CONFIRM';
 
-export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onComplete, onCancel }) => {
+const WHATSAPP_NUMBER = '905335494014'; // +90 533 549 40 14 (without + and spaces)
+
+export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onComplete, onCancel, onLoginRequired }) => {
   const [step, setStep] = useState<Step>('SERVICE');
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  
+
   // Real-time data
   const [staffList, setStaffList] = useState<User[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const isGuestMode = !currentUser;
 
   useEffect(() => {
     // Fetch available staff
@@ -58,8 +62,8 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
     if (!selectedStaff || !selectedDate) return false;
 
     // Check against REAL Firestore data
-    return appointments.some(appt => 
-      appt.staffId === selectedStaff.id && 
+    return appointments.some(appt =>
+      appt.staffId === selectedStaff.id &&
       appt.date === selectedDate &&
       appt.time === time
     );
@@ -77,11 +81,12 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
-    setStep('CONFIRM');
+    // For guest mode, go to GUEST_CONFIRM, otherwise go to CONFIRM
+    setStep(isGuestMode ? 'GUEST_CONFIRM' : 'CONFIRM');
   };
 
   const handleConfirm = async () => {
-    if (!selectedService || !selectedStaff || !selectedDate || !selectedTime) return;
+    if (!selectedService || !selectedStaff || !selectedDate || !selectedTime || !currentUser) return;
 
     setLoading(true);
     try {
@@ -107,6 +112,38 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
     }
   };
 
+  // WhatsApp message generator
+  const generateWhatsAppMessage = () => {
+    if (!selectedService || !selectedStaff || !selectedDate || !selectedTime) return '';
+
+    // Format date for display
+    const dateObj = new Date(selectedDate);
+    const formattedDate = dateObj.toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    return `Merhaba, randevu almak istiyorum.
+
+📅 *Randevu Detayları:*
+
+✂️ *Hizmet:* ${selectedService.name}
+💇 *Personel:* ${selectedStaff.name}
+📆 *Tarih:* ${formattedDate}
+⏰ *Saat:* ${selectedTime}
+💰 *Fiyat:* ₺${selectedService.price}
+
+Randevuyu onaylayabilir misiniz?`;
+  };
+
+  const handleWhatsAppBooking = () => {
+    const message = generateWhatsAppMessage();
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   // --- RENDER STEPS ---
 
   const renderServiceStep = () => (
@@ -114,8 +151,8 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
       <h3 className="text-xl font-serif text-white mb-6">Hizmet Seçimi</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {SERVICES.map(service => (
-          <GlassCard 
-            key={service.id} 
+          <GlassCard
+            key={service.id}
             onClick={() => handleServiceSelect(service)}
             className="group flex items-center gap-4 active:bg-gold-500/10 md:hover:bg-gold-500/10 border-white/10 cursor-pointer"
           >
@@ -165,12 +202,12 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
     return (
       <div className="space-y-6 animate-slide-up">
         <h3 className="text-xl font-serif text-white">Tarih ve Saat</h3>
-        
+
         {/* Date Picker */}
         <div className="space-y-2">
           <label className="text-sm text-gray-400">Tarih</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             value={selectedDate}
             min={getTodayString()}
             onChange={(e) => setSelectedDate(e.target.value)}
@@ -191,8 +228,8 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
                   onClick={() => handleTimeSelect(time)}
                   className={`
                     py-3 md:py-2 rounded-lg text-base font-medium transition-all shadow-sm
-                    ${isOccupied 
-                      ? 'bg-red-500/10 text-red-400 cursor-not-allowed border border-red-500/20' 
+                    ${isOccupied
+                      ? 'bg-red-500/10 text-red-400 cursor-not-allowed border border-red-500/20'
                       : 'bg-white/5 text-white active:bg-gold-500 active:text-black md:hover:bg-gold-500 md:hover:text-black border border-white/10'}
                   `}
                 >
@@ -210,14 +247,15 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
     );
   };
 
-  const renderConfirmStep = () => (
+  const renderGuestConfirmStep = () => (
     <div className="space-y-6 animate-slide-up text-center">
       <div className="w-20 h-20 bg-gold-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Icon name="check" size={40} className="text-gold-400" />
+        <Icon name="calendar" size={40} className="text-gold-400" />
       </div>
-      
-      <h3 className="text-2xl font-serif text-white">Randevu Özeti</h3>
-      
+
+      <h3 className="text-2xl font-serif text-white">Randevu Detayları</h3>
+      <p className="text-gray-400">Randevunu tamamlamak için bir seçenek seç</p>
+
       <div className="bg-white/5 rounded-xl p-6 space-y-4 text-left border border-white/10">
         <div className="flex justify-between border-b border-white/10 pb-2">
           <span className="text-gray-400">Hizmet</span>
@@ -241,7 +279,64 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
         </div>
       </div>
 
-      <button 
+      <div className="space-y-3">
+        {/* Option 1: Login and Complete Booking */}
+        <button
+          onClick={() => onLoginRequired && onLoginRequired()}
+          className="w-full font-bold py-4 rounded-xl transition-all shadow-lg flex justify-center items-center gap-3 bg-gold-500 text-black hover:bg-gold-400"
+        >
+          <Icon name="user" size={20} />
+          Giriş Yap ve Randevuyu Tamamla
+        </button>
+
+        {/* Option 2: WhatsApp Booking */}
+        <button
+          onClick={handleWhatsAppBooking}
+          className="w-full font-bold py-4 rounded-xl transition-all shadow-lg flex justify-center items-center gap-3 bg-green-600 text-white hover:bg-green-500"
+        >
+          <Icon name="whatsapp" size={20} />
+          WhatsApp ile Randevu Planla
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-500 mt-2">
+        WhatsApp ile randevu talebinizi doğrudan iletebilirsiniz.
+      </p>
+    </div>
+  );
+
+  const renderConfirmStep = () => (
+    <div className="space-y-6 animate-slide-up text-center">
+      <div className="w-20 h-20 bg-gold-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Icon name="check" size={40} className="text-gold-400" />
+      </div>
+
+      <h3 className="text-2xl font-serif text-white">Randevu Özeti</h3>
+
+      <div className="bg-white/5 rounded-xl p-6 space-y-4 text-left border border-white/10">
+        <div className="flex justify-between border-b border-white/10 pb-2">
+          <span className="text-gray-400">Hizmet</span>
+          <span className="font-medium">{selectedService?.name}</span>
+        </div>
+        <div className="flex justify-between border-b border-white/10 pb-2">
+          <span className="text-gray-400">Personel</span>
+          <span className="font-medium">{selectedStaff?.name}</span>
+        </div>
+        <div className="flex justify-between border-b border-white/10 pb-2">
+          <span className="text-gray-400">Tarih</span>
+          <span className="font-medium">{selectedDate}</span>
+        </div>
+        <div className="flex justify-between border-b border-white/10 pb-2">
+          <span className="text-gray-400">Saat</span>
+          <span className="font-medium">{selectedTime}</span>
+        </div>
+        <div className="flex justify-between pt-2">
+          <span className="text-gold-400">Toplam</span>
+          <span className="text-xl font-bold text-gold-400">₺{selectedService?.price}</span>
+        </div>
+      </div>
+
+      <button
         onClick={handleConfirm}
         disabled={loading}
         className={`w-full font-bold py-4 rounded-xl transition-colors shadow-lg shadow-gold-500/20 flex justify-center items-center gap-2
@@ -253,12 +348,20 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
     </div>
   );
 
+  // Progress bar steps
+  const progressSteps = isGuestMode
+    ? ['Service', 'Staff', 'Time', 'Details']
+    : ['Service', 'Staff', 'Time', 'Confirm'];
+  const stepValues = isGuestMode
+    ? ['SERVICE', 'STAFF', 'DATETIME', 'GUEST_CONFIRM']
+    : ['SERVICE', 'STAFF', 'DATETIME', 'CONFIRM'];
+
   return (
     <div className="max-w-2xl mx-auto w-full">
       {/* Progress Bar */}
       <div className="flex items-center justify-between mb-8 px-4">
-        {['Service', 'Staff', 'Time', 'Confirm'].map((s, idx) => {
-          const stepIdx = ['SERVICE', 'STAFF', 'DATETIME', 'CONFIRM'].indexOf(step);
+        {progressSteps.map((s, idx) => {
+          const stepIdx = stepValues.indexOf(step);
           return (
             <div key={s} className="flex flex-col items-center">
               <div className={`w-3 h-3 rounded-full transition-colors duration-300 ${idx <= stepIdx ? 'bg-gold-500' : 'bg-gray-700'}`} />
@@ -268,7 +371,7 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
       </div>
 
       <GlassCard className="relative min-h-[400px]">
-        <button 
+        <button
           onClick={onCancel}
           className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-full transition-all z-10"
           title="Kapat"
@@ -279,10 +382,11 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
         {step === 'SERVICE' && renderServiceStep()}
         {step === 'STAFF' && renderStaffStep()}
         {step === 'DATETIME' && renderDateTimeStep()}
+        {step === 'GUEST_CONFIRM' && renderGuestConfirmStep()}
         {step === 'CONFIRM' && renderConfirmStep()}
-        
-        {step !== 'SERVICE' && step !== 'CONFIRM' && (
-          <button 
+
+        {step !== 'SERVICE' && step !== 'GUEST_CONFIRM' && step !== 'CONFIRM' && (
+          <button
             onClick={() => {
               if (step === 'STAFF') setStep('SERVICE');
               if (step === 'DATETIME') setStep('STAFF');

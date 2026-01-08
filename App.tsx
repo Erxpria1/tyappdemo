@@ -12,8 +12,20 @@ import { BookingWizard } from './components/BookingWizard';
 import { AdminLoginModal, CustomerLoginModal } from './components/LoginModals';
 import { CustomerAppointments } from './components/CustomerAppointments';
 import { MobileNavBar } from './components/MobileNavBar'; // New Mobile Component
+import { ServiceItem } from './types';
 
 type View = 'DASHBOARD' | 'BOOKING' | 'AI_CONSULT';
+
+// Stored guest booking selections
+interface GuestBookingData {
+  serviceId: string;
+  serviceName: string;
+  servicePrice: number;
+  staffId: string;
+  staffName: string;
+  date: string;
+  time: string;
+}
 
 function App() {
   const [showIntro, setShowIntro] = useState(true);
@@ -23,6 +35,10 @@ function App() {
   // Login Modals State
   const [showCustomerLogin, setShowCustomerLogin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+
+  // Guest booking state
+  const [guestBookingData, setGuestBookingData] = useState<GuestBookingData | null>(null);
+  const [returnToBookingAfterLogin, setReturnToBookingAfterLogin] = useState(false);
 
   // Data State
   const [users, setUsers] = useState<User[]>([]);
@@ -61,20 +77,30 @@ function App() {
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.STAFF) {
         setCurrentView('DASHBOARD');
+    } else if (returnToBookingAfterLogin && guestBookingData) {
+      // User logged in from guest booking flow, return to booking
+      setReturnToBookingAfterLogin(false);
+      setCurrentView('BOOKING');
     }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setCurrentView('DASHBOARD');
+    setGuestBookingData(null);
+    setReturnToBookingAfterLogin(false);
   };
 
   const handleBookingClick = () => {
-    if (!currentUser) {
-      setShowCustomerLogin(true);
-    } else {
-      setCurrentView('BOOKING');
-    }
+    // Allow both guests and logged-in users to access booking
+    setCurrentView('BOOKING');
+  };
+
+  const handleGuestLoginRequired = () => {
+    // Store the current booking selection and show login modal
+    // The booking wizard state will be preserved since we don't unmount it
+    setReturnToBookingAfterLogin(true);
+    setShowCustomerLogin(true);
   };
   
   const renderContent = () => {
@@ -253,14 +279,15 @@ function App() {
             <AIHairConsultant onClose={() => setCurrentView('DASHBOARD')} />
           )}
           
-          {currentView === 'BOOKING' && currentUser && (
-            <BookingWizard 
+          {currentView === 'BOOKING' && (
+            <BookingWizard
               currentUser={currentUser}
               onComplete={() => {
                 alert("Randevunuz başarıyla oluşturuldu!");
                 setCurrentView('DASHBOARD');
               }}
               onCancel={() => setCurrentView('DASHBOARD')}
+              onLoginRequired={handleGuestLoginRequired}
             />
           )}
         </main>
