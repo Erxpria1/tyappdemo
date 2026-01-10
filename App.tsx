@@ -25,8 +25,9 @@ function App() {
   const [showCustomerLogin, setShowCustomerLogin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  // Guest booking state
+  // Guest booking and AI consult state
   const [returnToBookingAfterLogin, setReturnToBookingAfterLogin] = useState(false);
+  const [returnToAIAfterLogin, setReturnToAIAfterLogin] = useState(false);
 
   // Data State
   const [users, setUsers] = useState<User[]>([]);
@@ -69,6 +70,10 @@ function App() {
       // User logged in from guest booking flow, return to booking
       setReturnToBookingAfterLogin(false);
       setCurrentView('BOOKING');
+    } else if (returnToAIAfterLogin) {
+      // User logged in from AI consult flow, return to AI consult
+      setReturnToAIAfterLogin(false);
+      setCurrentView('AI_CONSULT');
     }
   };
 
@@ -76,6 +81,7 @@ function App() {
     setCurrentUser(null);
     setCurrentView('DASHBOARD');
     setReturnToBookingAfterLogin(false);
+    setReturnToAIAfterLogin(false);
   };
 
   const handleBookingClick = () => {
@@ -87,6 +93,13 @@ function App() {
     // Store the current booking selection and show login modal
     // The booking wizard state will be preserved since we don't unmount it
     setReturnToBookingAfterLogin(true);
+    setShowCustomerLogin(true);
+  };
+
+  const handleAILoginRequired = () => {
+    // Store the current AI consult state and show login modal
+    // The AI consultant state will be preserved since we don't unmount it
+    setReturnToAIAfterLogin(true);
     setShowCustomerLogin(true);
   };
   
@@ -263,7 +276,11 @@ function App() {
           )}
 
           {currentView === 'AI_CONSULT' && (
-            <AIHairConsultant onClose={() => setCurrentView('DASHBOARD')} />
+            <AIHairConsultant
+              currentUser={currentUser}
+              onLoginRequired={handleAILoginRequired}
+              onClose={() => setCurrentView('DASHBOARD')}
+            />
           )}
           
           {currentView === 'BOOKING' && (

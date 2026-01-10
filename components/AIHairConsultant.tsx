@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { analyzeStyle, generateHairstylePreview } from '../services/geminiService';
-import { HairStyleRecommendation } from '../types';
+import { HairStyleRecommendation, User } from '../types';
 import { GlassCard } from './GlassCard';
 import { Icon } from './Icon';
 import {
@@ -12,10 +12,12 @@ import {
 } from '../constants';
 
 interface AIHairConsultantProps {
+  currentUser?: User | null;
+  onLoginRequired?: () => void;
   onClose?: () => void;
 }
 
-export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ onClose }) => {
+export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ currentUser, onLoginRequired, onClose }) => {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false); // Global loading for initial text analysis
   const [recommendations, setRecommendations] = useState<HairStyleRecommendation[]>([]);
@@ -98,6 +100,14 @@ export const AIHairConsultant: React.FC<AIHairConsultantProps> = ({ onClose }) =
 
   const handleAnalyze = async () => {
     if (!description && !selectedImage) return;
+
+    // Require login for analysis
+    if (!currentUser) {
+      if (onLoginRequired) {
+        onLoginRequired();
+      }
+      return;
+    }
 
     setLoading(true);
     setRecommendations([]);
