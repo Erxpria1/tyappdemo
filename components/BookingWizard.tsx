@@ -45,6 +45,13 @@ export const BookingWizard: React.FC<BookingWizardProps> = ({ currentUser, onCom
     return () => unsubscribe();
   }, []);
 
+  // Handle guest login completion: if user logs in while at GUEST_CONFIRM, move to CONFIRM
+  useEffect(() => {
+    if (currentUser && step === 'GUEST_CONFIRM') {
+      setStep('CONFIRM');
+    }
+  }, [currentUser, step]);
+
   // --- ALGORITHM: Dolu/Boş Logic (Real-time) ---
   const generateTimeSlots = () => {
     const slots = [];

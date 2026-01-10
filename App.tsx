@@ -16,17 +16,6 @@ import { ServiceItem } from './types';
 
 type View = 'DASHBOARD' | 'BOOKING' | 'AI_CONSULT';
 
-// Stored guest booking selections
-interface GuestBookingData {
-  serviceId: string;
-  serviceName: string;
-  servicePrice: number;
-  staffId: string;
-  staffName: string;
-  date: string;
-  time: string;
-}
-
 function App() {
   const [showIntro, setShowIntro] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -37,7 +26,6 @@ function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   // Guest booking state
-  const [guestBookingData, setGuestBookingData] = useState<GuestBookingData | null>(null);
   const [returnToBookingAfterLogin, setReturnToBookingAfterLogin] = useState(false);
 
   // Data State
@@ -77,7 +65,7 @@ function App() {
 
     if (user.role === UserRole.ADMIN || user.role === UserRole.STAFF) {
         setCurrentView('DASHBOARD');
-    } else if (returnToBookingAfterLogin && guestBookingData) {
+    } else if (returnToBookingAfterLogin) {
       // User logged in from guest booking flow, return to booking
       setReturnToBookingAfterLogin(false);
       setCurrentView('BOOKING');
@@ -87,7 +75,6 @@ function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setCurrentView('DASHBOARD');
-    setGuestBookingData(null);
     setReturnToBookingAfterLogin(false);
   };
 
